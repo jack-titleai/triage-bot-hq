@@ -1,7 +1,6 @@
 
 import { Message } from "@/types";
 import { classifyMessageWithLLM, classifyMessageWithRules, hasLLMApiKey } from "@/services/llmService";
-import { Toast } from "@/components/ui/toast";
 
 /**
  * Parses a CSV file into an array of Message objects
@@ -44,21 +43,20 @@ export const parseCSV = async (csvText: string, toast: any): Promise<Message[]> 
   const messageIndex = headers.indexOf('message');
   const datetimeIndex = headers.indexOf('datetime');
 
-  // Check if LLM API key is available - Force refresh from localStorage
+  // Check for LLM API key and determine classification method
   const hasKey = hasLLMApiKey();
-  console.log("LLM API key status:", hasKey ? "Available" : "Not available");
   
-  if (!hasKey) {
-    console.log("No LLM API key found, using rule-based classification");
+  if (hasKey) {
+    console.log("✅ Valid OpenAI API key found - Using LLM for message classification");
     toast({
-      title: "Using rule-based classification",
-      description: "Set up an OpenAI API key to enable LLM-based message classification",
+      title: "Using AI classification",
+      description: "Processing messages with OpenAI for accurate triage",
     });
   } else {
-    console.log("Using LLM-based classification");
+    console.log("⚠️ No valid OpenAI API key - Using rule-based classification");
     toast({
-      title: "Using LLM classification",
-      description: "Processing messages with AI for more accurate triage",
+      title: "Using rule-based classification",
+      description: "Set up an OpenAI API key to enable AI-based message classification",
     });
   }
 
@@ -70,8 +68,11 @@ export const parseCSV = async (csvText: string, toast: any): Promise<Message[]> 
   let processedLines = 0;
   let lastProgressUpdate = 0;
   
-  // Set up batch processing for LLM classification
-  const BATCH_SIZE = hasKey ? 5 : 20; // Process more messages with LLM when a key is available
+  // Set up LLM classification parameters
+  // Use LLM more frequently when a key is available
+  const LLM_FREQUENCY = hasKey ? 2 : 20; // Classify every 2nd message with LLM when key is available
+  let llmClassificationsCount = 0;
+  let ruleClassificationsCount = 0;
   
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
@@ -108,17 +109,21 @@ export const parseCSV = async (csvText: string, toast: any): Promise<Message[]> 
       // Classify message - either with LLM or fallback to rule-based
       let classification;
       
-      // Adjust frequency of LLM classification based on API key availability
-      if (hasKey && processedLines % BATCH_SIZE === 0) {
+      // Use LLM if key is available and according to frequency
+      if (hasKey && processedLines % LLM_FREQUENCY === 0) {
         try {
+          console.log(`Classifying message ${processedLines + 1} using LLM`);
           classification = await classifyMessageWithLLM(subject, content);
-          console.log(`LLM classified message ${processedLines}: ${classification.triage_level}/${classification.triage_category}`);
+          llmClassificationsCount++;
         } catch (error) {
-          console.warn("LLM classification failed, falling back to rules:", error);
+          console.error("LLM classification failed, falling back to rules:", error);
           classification = classifyMessageWithRules(subject, content);
+          ruleClassificationsCount++;
         }
       } else {
+        console.log(`Using rule-based classification for message ${processedLines + 1}`);
         classification = classifyMessageWithRules(subject, content);
+        ruleClassificationsCount++;
       }
       
       const message: Message = {
@@ -140,11 +145,21 @@ export const parseCSV = async (csvText: string, toast: any): Promise<Message[]> 
         console.log(`Processing: ${progress}% complete (${processedLines}/${totalLines})`);
       }
     } catch (err) {
-      console.warn(`Error parsing line ${i}:`, err);
+      console.error(`Error parsing line ${i}:`, err);
       // Continue with next line instead of failing the whole import
     }
   }
   
+  console.log(`Classification complete: ${llmClassificationsCount} messages via LLM, ${ruleClassificationsCount} via rules`);
+  
+  if (hasKey && llmClassificationsCount === 0) {
+    console.error("⚠️ No messages were classified using LLM despite having an API key!");
+    toast({
+      title: "LLM classification issue",
+      description: "Failed to use LLM for classification. Check console for details.",
+      variant: "destructive"
+    });
+  }
+  
   return messages;
 };
-

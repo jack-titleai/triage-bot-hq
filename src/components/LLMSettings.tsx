@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { getLLMApiKey, saveLLMApiKey, clearLLMApiKey } from "@/services/llmService";
+import { getLLMApiKey, saveLLMApiKey, clearLLMApiKey, hasLLMApiKey } from "@/services/llmService";
 import { useToast } from "@/hooks/use-toast";
 import { ApiKeyInput } from "@/components/ApiKeyInput";
 import { SettingsHeader } from "@/components/SettingsHeader";
@@ -18,13 +18,17 @@ export function LLMSettings({ onClose }: LLMSettingsProps) {
   const [hasKey, setHasKey] = useState(false);
   const { toast } = useToast();
 
+  // Check for API key on component mount and whenever visible
   useEffect(() => {
     const storedKey = getLLMApiKey();
-    setHasKey(!!storedKey);
+    const keyValid = hasLLMApiKey();
+    setHasKey(keyValid);
     if (storedKey) {
-      setApiKey("••••••••••••••••••••••••••");
+      setApiKey(showKey ? storedKey : "••••••••••••••••••••••••••");
+    } else {
+      setApiKey("");
     }
-  }, []);
+  }, [showKey]);
 
   const handleSaveKey = () => {
     if (!apiKey || apiKey === "••••••••••••••••••••••••••") {
@@ -41,7 +45,7 @@ export function LLMSettings({ onClose }: LLMSettingsProps) {
     setShowKey(false);
     toast({
       title: "API key saved",
-      description: "Your API key has been saved successfully",
+      description: "Your API key has been saved successfully. Reload any uploaded data to use it.",
     });
   };
 

@@ -20,18 +20,21 @@ export const getLLMApiKey = (): string | null => {
 // Save the API key to localStorage
 export const saveLLMApiKey = (apiKey: string): void => {
   localStorage.setItem(API_KEY_STORAGE_KEY, apiKey);
+  console.log("API key saved to localStorage");
 };
 
 // Clear the API key from localStorage
 export const clearLLMApiKey = (): void => {
   localStorage.removeItem(API_KEY_STORAGE_KEY);
+  console.log("API key removed from localStorage");
 };
 
-// Check if API key exists
+// Check if API key exists and is valid
 export const hasLLMApiKey = (): boolean => {
-  const key = localStorage.getItem(API_KEY_STORAGE_KEY);
-  console.log("Checking for API key:", key ? "Found" : "Not found");
-  return !!key;
+  const key = getLLMApiKey();
+  const keyExists = !!key && key.length > 20; // Basic validation that the key is long enough
+  console.log(`LLM API key check: ${keyExists ? "Valid key found" : "No valid key"}`);
+  return keyExists;
 };
 
 /**
@@ -45,6 +48,7 @@ export const classifyMessageWithLLM = async (
   const apiKey = getLLMApiKey();
   
   if (!apiKey) {
+    console.error("No API key found. Cannot classify with LLM.");
     throw new Error("API key not found. Please set your API key.");
   }
 
@@ -84,7 +88,7 @@ Return your classification in this format:
 `;
 
     // Call the OpenAI API
-    console.log("Calling OpenAI API for classification");
+    console.log(`Starting LLM classification for: ${subject.substring(0, 20)}...`);
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -110,7 +114,7 @@ Return your classification in this format:
     }
 
     const data = await response.json();
-    console.log("LLM response:", data);
+    console.log("LLM response received successfully");
 
     // Parse the response content
     try {
@@ -125,11 +129,14 @@ Return your classification in this format:
           throw new Error("Invalid LLM response format");
         }
         
-        return {
+        const result = {
           triage_level: parsedResponse.triage_level as TriageLevel,
           triage_category: parsedResponse.triage_category as TriageCategory,
-          confidence: parsedResponse.confidence || 0.7,
+          confidence: parsedResponse.confidence || 0.9,
         };
+
+        console.log(`LLM classified as: ${result.triage_level}/${result.triage_category} (confidence: ${result.confidence})`);
+        return result;
       } else {
         throw new Error("Could not extract JSON from LLM response");
       }
@@ -178,10 +185,10 @@ export const classifyMessageWithRules = (
     triageCategory = "Referral";
   }
   
+  console.log(`Rule-based classified as: ${triageLevel}/${triageCategory}`);
   return {
     triage_level: triageLevel,
     triage_category: triageCategory,
     confidence: 0.6, // Lower confidence for rule-based classification
   };
 };
-
