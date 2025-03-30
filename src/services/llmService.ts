@@ -32,7 +32,7 @@ export const clearLLMApiKey = (): void => {
 // Check if API key exists and is valid
 export const hasLLMApiKey = (): boolean => {
   const key = getLLMApiKey();
-  const keyExists = !!key && key.length > 20; // Basic validation that the key is long enough
+  const keyExists = !!key && key.length > 20 && !key.includes("•"); // Basic validation that the key is long enough and not masked
   console.log(`LLM API key check: ${keyExists ? "Valid key found" : "No valid key"}`);
   return keyExists;
 };
@@ -49,8 +49,10 @@ export const classifyMessageWithLLM = async (
   
   if (!apiKey) {
     console.error("No API key found. Cannot classify with LLM.");
-    throw new Error("API key not found. Please set your API key.");
+    throw new Error("API key not found. Please set your API key in the settings.");
   }
+
+  console.log(`Starting LLM classification for message: "${subject.substring(0, 20)}..."`);
 
   try {
     // Construct the prompt for the LLM
@@ -88,7 +90,7 @@ Return your classification in this format:
 `;
 
     // Call the OpenAI API
-    console.log(`Starting LLM classification for: ${subject.substring(0, 20)}...`);
+    console.log("Sending request to OpenAI API...");
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {

@@ -7,6 +7,7 @@ import { getLLMApiKey, saveLLMApiKey, clearLLMApiKey, hasLLMApiKey } from "@/ser
 import { useToast } from "@/hooks/use-toast";
 import { ApiKeyInput } from "@/components/ApiKeyInput";
 import { SettingsHeader } from "@/components/SettingsHeader";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
 
 interface LLMSettingsProps {
   onClose: () => void;
@@ -78,10 +79,22 @@ export function LLMSettings({ onClose }: LLMSettingsProps) {
     <Card className="w-full max-w-md mx-auto">
       <SettingsHeader title="LLM API Settings" onClose={onClose} />
       <CardContent className="space-y-4">
-        <Alert>
-          <AlertDescription>
-            This application uses OpenAI's API to classify healthcare messages. 
-            You need to provide your own API key to enable LLM classification.
+        <Alert variant={hasKey ? "default" : "warning"}>
+          <AlertDescription className="flex items-center gap-2">
+            {hasKey ? (
+              <>
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <span>Your OpenAI API key is configured. All messages will be classified using AI.</span>
+              </>
+            ) : (
+              <>
+                <AlertCircle className="h-4 w-4" />
+                <span>
+                  This application uses OpenAI's API to classify healthcare messages.
+                  Set up your API key to enable AI-based classification.
+                </span>
+              </>
+            )}
           </AlertDescription>
         </Alert>
 
@@ -92,6 +105,12 @@ export function LLMSettings({ onClose }: LLMSettingsProps) {
           onApiKeyChange={setApiKey}
           onToggleShowKey={handleShowKey}
         />
+        
+        {hasKey && (
+          <p className="text-sm text-green-600">
+            Your API key is valid. All messages will be classified using the OpenAI API.
+          </p>
+        )}
       </CardContent>
       <CardFooter className="flex justify-between">
         <Button variant="destructive" onClick={handleClearKey} disabled={!hasKey}>

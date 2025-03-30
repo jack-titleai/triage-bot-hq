@@ -50,7 +50,7 @@ export const parseCSV = async (csvText: string, toast: any): Promise<Message[]> 
     console.log("✅ Valid OpenAI API key found - Using LLM for message classification");
     toast({
       title: "Using AI classification",
-      description: "Processing messages with OpenAI for accurate triage",
+      description: "Processing all messages with OpenAI for accurate triage",
     });
   } else {
     console.log("⚠️ No valid OpenAI API key - Using rule-based classification");
@@ -68,9 +68,7 @@ export const parseCSV = async (csvText: string, toast: any): Promise<Message[]> 
   let processedLines = 0;
   let lastProgressUpdate = 0;
   
-  // Set up LLM classification parameters
-  // Use LLM more frequently when a key is available
-  const LLM_FREQUENCY = hasKey ? 2 : 20; // Classify every 2nd message with LLM when key is available
+  // Tracking for classification methods
   let llmClassificationsCount = 0;
   let ruleClassificationsCount = 0;
   
@@ -106,11 +104,10 @@ export const parseCSV = async (csvText: string, toast: any): Promise<Message[]> 
       const content = values[messageIndex]?.trim() || '';
       const subject = values[subjectIndex]?.trim() || 'No Subject';
       
-      // Classify message - either with LLM or fallback to rule-based
+      // Classify message with LLM when API key is available, otherwise use rule-based
       let classification;
       
-      // Use LLM if key is available and according to frequency
-      if (hasKey && processedLines % LLM_FREQUENCY === 0) {
+      if (hasKey) {
         try {
           console.log(`Classifying message ${processedLines + 1} using LLM`);
           classification = await classifyMessageWithLLM(subject, content);
