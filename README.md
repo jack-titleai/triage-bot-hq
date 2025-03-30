@@ -12,34 +12,38 @@ This application helps healthcare providers by:
 - Offering filtering and search capabilities to quickly find relevant messages
 - Displaying analytics to understand message patterns and volumes
 
-## Structure
+## Project Structure
 
 ```
-├── inbox_triage/               # Python package
-│   ├── __init__.py             # Package initialization
-│   ├── classifier/             # LLM message classification
-│   │   ├── __init__.py
-│   │   ├── model.py            # LLM integration 
-│   │   └── schema.py           # Triage schema definition
-│   ├── data/                   # Data handling
-│   │   ├── __init__.py
-│   │   ├── database.py         # Database operations
-│   │   ├── loader.py           # CSV import functionality
-│   │   └── sample_data.csv     # Sample data for testing
-│   ├── webapp/                 # Web application
-│   │   ├── __init__.py
-│   │   ├── app.py              # Flask/FastAPI web app
-│   │   ├── routes.py           # API routes
-│   │   └── static/             # Dashboard frontend assets
-│   └── cli.py                  # Command-line interface
-├── pyproject.toml              # Project dependencies/metadata
-├── triage_description.md       # Documentation of triage schema
-├── README.md                   # Project documentation
-└── tests/                      # Test suite
-    ├── __init__.py
-    ├── test_classifier.py
-    └── test_data.py
+├── src/                          # Source code
+│   ├── components/               # React components
+│   │   ├── ui/                   # UI components from shadcn/ui
+│   │   ├── DashboardStats.tsx    # Dashboard statistics
+│   │   ├── MessageCard.tsx       # Message display component
+│   │   ├── MessageList.tsx       # List of messages
+│   │   ├── SearchBox.tsx         # Search functionality
+│   │   ├── TileCounter.tsx       # Count displays
+│   │   ├── TriageBadge.tsx       # Triage level indicator
+│   │   ├── CategoryBadge.tsx     # Message category indicator
+│   │   └── PieChart.tsx          # Chart visualization
+│   ├── pages/                    # Application pages
+│   ├── services/                 # Data services
+│   │   └── mockDataService.ts    # Mock data provider
+│   ├── types/                    # TypeScript type definitions
+│   │   └── index.ts              # Main type definitions
+│   ├── lib/                      # Utility functions
+│   └── App.tsx                   # Main application component
+├── public/                       # Static assets
+└── index.html                    # HTML entry point
 ```
+
+## Features
+
+- **Message Triage**: Messages are classified by urgency (Urgent, High, Medium, Low) and category (Clinical, Medication, etc.)
+- **Interactive Dashboard**: Visual overview of message distribution
+- **Advanced Filtering**: Filter by date range, triage level, and category
+- **Search Functionality**: Quickly find messages with text search
+- **Responsive Design**: Works on desktop and mobile devices
 
 ## Installation
 
@@ -48,56 +52,58 @@ This application helps healthcare providers by:
 git clone https://github.com/yourusername/healthcare-inbox-triage.git
 cd healthcare-inbox-triage
 
-# Install the package
-pip install -e .
+# Install dependencies
+npm install
+
+# Start the development server
+npm run dev
 ```
 
 ## Usage
 
-### Command-line Interface
+After starting the development server, navigate to http://localhost:8080 in your browser.
 
-```bash
-# Process a CSV file
-inbox-triage process path/to/messages.csv
+### Dashboard
 
-# Start the web dashboard
-inbox-triage dashboard
-```
+The main dashboard shows an overview of all messages, with filtering options and statistics.
 
-### Web Dashboard
+### Message Management
 
-After starting the dashboard, navigate to http://localhost:5000 in your browser.
-
-## Setting up LLM Credentials
-
-This application uses an LLM for message classification. You'll need to obtain API credentials:
-
-1. Register for an API key from OpenAI at https://openai.com
-2. Set up your API key as an environment variable:
-
-```bash
-# Linux/Mac
-export OPENAI_API_KEY="your-api-key"
-
-# Windows
-set OPENAI_API_KEY="your-api-key"
-```
-
-Alternatively, create a .env file in the project root:
-
-```
-OPENAI_API_KEY=your-api-key
-```
+- Click on a message to expand and view its full content
+- Use the search box to find specific messages
+- Filter messages by date range, urgency level, or category
 
 ## Development
 
 ```bash
-# Install development dependencies
-pip install -e ".[dev]"
-
 # Run tests
-pytest
+npm test
+
+# Build for production
+npm run build
 ```
+
+## Triage Classification System
+
+The system uses the following classification scheme:
+
+### Triage Levels:
+- **Urgent**: Requires immediate attention (within hours)
+- **High**: Should be addressed within 24 hours
+- **Medium**: Should be addressed within 2-3 days
+- **Low**: Can be addressed within a week
+
+### Message Categories:
+- **Clinical**: Related to symptoms, conditions, or health concerns
+- **Medication**: Prescription refills, medication questions
+- **Administrative**: Scheduling, general inquiries
+- **Lab Result**: Lab test results or questions
+- **Follow-up**: Post-appointment follow-up
+- **Insurance**: Coverage questions or issues
+- **Referral**: Specialist referral requests
+- **Other**: Messages that don't fit other categories
+
+For more details, see the [triage description](./triage_description.md).
 
 ## License
 
