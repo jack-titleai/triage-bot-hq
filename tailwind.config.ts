@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,19 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				// Custom colors for our medical triage app
+				triage: {
+					urgent: '#DC2626', // red-600
+					high: '#F97316', // orange-500
+					medium: '#F59E0B', // amber-500
+					low: '#10B981', // emerald-500
+				},
+				medical: {
+					primary: '#0EA5E9', // sky-500
+					secondary: '#0F766E', // teal-700
+					light: '#E0F2FE', // sky-100
+					dark: '#0C4A6E', // sky-900
 				}
 			},
 			borderRadius: {

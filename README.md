@@ -1,69 +1,104 @@
-# Welcome to your Lovable project
 
-## Project info
+# Healthcare Inbox Triage System
 
-**URL**: https://lovable.dev/projects/580c9216-8e40-4448-8cbc-fe3d02613872
+A comprehensive message triage system for healthcare providers to efficiently manage and prioritize patient communications.
 
-## How can I edit this code?
+## Overview
 
-There are several ways of editing your application.
+This application helps healthcare providers by:
 
-**Use Lovable**
+- Automatically classifying incoming messages based on urgency and type
+- Providing a clean, intuitive dashboard for viewing and managing messages
+- Offering filtering and search capabilities to quickly find relevant messages
+- Displaying analytics to understand message patterns and volumes
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/580c9216-8e40-4448-8cbc-fe3d02613872) and start prompting.
+## Structure
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+├── inbox_triage/               # Python package
+│   ├── __init__.py             # Package initialization
+│   ├── classifier/             # LLM message classification
+│   │   ├── __init__.py
+│   │   ├── model.py            # LLM integration 
+│   │   └── schema.py           # Triage schema definition
+│   ├── data/                   # Data handling
+│   │   ├── __init__.py
+│   │   ├── database.py         # Database operations
+│   │   ├── loader.py           # CSV import functionality
+│   │   └── sample_data.csv     # Sample data for testing
+│   ├── webapp/                 # Web application
+│   │   ├── __init__.py
+│   │   ├── app.py              # Flask/FastAPI web app
+│   │   ├── routes.py           # API routes
+│   │   └── static/             # Dashboard frontend assets
+│   └── cli.py                  # Command-line interface
+├── pyproject.toml              # Project dependencies/metadata
+├── triage_description.md       # Documentation of triage schema
+├── README.md                   # Project documentation
+└── tests/                      # Test suite
+    ├── __init__.py
+    ├── test_classifier.py
+    └── test_data.py
 ```
 
-**Edit a file directly in GitHub**
+## Installation
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/healthcare-inbox-triage.git
+cd healthcare-inbox-triage
 
-**Use GitHub Codespaces**
+# Install the package
+pip install -e .
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Usage
 
-## What technologies are used for this project?
+### Command-line Interface
 
-This project is built with .
+```bash
+# Process a CSV file
+inbox-triage process path/to/messages.csv
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+# Start the web dashboard
+inbox-triage dashboard
+```
 
-## How can I deploy this project?
+### Web Dashboard
 
-Simply open [Lovable](https://lovable.dev/projects/580c9216-8e40-4448-8cbc-fe3d02613872) and click on Share -> Publish.
+After starting the dashboard, navigate to http://localhost:5000 in your browser.
 
-## I want to use a custom domain - is that possible?
+## Setting up LLM Credentials
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+This application uses an LLM for message classification. You'll need to obtain API credentials:
+
+1. Register for an API key from OpenAI at https://openai.com
+2. Set up your API key as an environment variable:
+
+```bash
+# Linux/Mac
+export OPENAI_API_KEY="your-api-key"
+
+# Windows
+set OPENAI_API_KEY="your-api-key"
+```
+
+Alternatively, create a .env file in the project root:
+
+```
+OPENAI_API_KEY=your-api-key
+```
+
+## Development
+
+```bash
+# Install development dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+```
+
+## License
+
+MIT
