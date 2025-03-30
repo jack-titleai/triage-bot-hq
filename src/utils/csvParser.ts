@@ -44,9 +44,11 @@ export const parseCSV = async (csvText: string, toast: any): Promise<Message[]> 
   const messageIndex = headers.indexOf('message');
   const datetimeIndex = headers.indexOf('datetime');
 
-  // Check if LLM API key is available
-  const useLLM = hasLLMApiKey();
-  if (!useLLM) {
+  // Check if LLM API key is available - Force refresh from localStorage
+  const hasKey = hasLLMApiKey();
+  console.log("LLM API key status:", hasKey ? "Available" : "Not available");
+  
+  if (!hasKey) {
     console.log("No LLM API key found, using rule-based classification");
     toast({
       title: "Using rule-based classification",
@@ -67,6 +69,9 @@ export const parseCSV = async (csvText: string, toast: any): Promise<Message[]> 
   const totalLines = lines.length - 1;
   let processedLines = 0;
   let lastProgressUpdate = 0;
+  
+  // Set up batch processing for LLM classification
+  const BATCH_SIZE = hasKey ? 5 : 20; // Process more messages with LLM when a key is available
   
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
@@ -102,9 +107,12 @@ export const parseCSV = async (csvText: string, toast: any): Promise<Message[]> 
       
       // Classify message - either with LLM or fallback to rule-based
       let classification;
-      if (useLLM && processedLines % 10 === 0) { // Process every 10th message with LLM to avoid rate limits
+      
+      // Adjust frequency of LLM classification based on API key availability
+      if (hasKey && processedLines % BATCH_SIZE === 0) {
         try {
           classification = await classifyMessageWithLLM(subject, content);
+          console.log(`LLM classified message ${processedLines}: ${classification.triage_level}/${classification.triage_category}`);
         } catch (error) {
           console.warn("LLM classification failed, falling back to rules:", error);
           classification = classifyMessageWithRules(subject, content);
@@ -139,3 +147,4 @@ export const parseCSV = async (csvText: string, toast: any): Promise<Message[]> 
   
   return messages;
 };
+

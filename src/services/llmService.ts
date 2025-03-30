@@ -29,7 +29,9 @@ export const clearLLMApiKey = (): void => {
 
 // Check if API key exists
 export const hasLLMApiKey = (): boolean => {
-  return !!getLLMApiKey();
+  const key = localStorage.getItem(API_KEY_STORAGE_KEY);
+  console.log("Checking for API key:", key ? "Found" : "Not found");
+  return !!key;
 };
 
 /**
@@ -182,3 +184,4 @@ export const classifyMessageWithRules = (
     confidence: 0.6, // Lower confidence for rule-based classification
   };
 };
+
