@@ -2,11 +2,14 @@
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Upload } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { Upload, Settings } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { Message, TriageCategory, TriageLevel } from "@/types";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { LLMSettings } from "@/components/LLMSettings";
+import { classifyMessageWithLLM, classifyMessageWithRules, hasLLMApiKey } from "@/services/llmService";
 
 interface SearchBoxProps {
   value: string;
@@ -18,8 +21,9 @@ export function SearchBox({ value, onChange, onDataLoaded }: SearchBoxProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -38,11 +42,11 @@ export function SearchBox({ value, onChange, onDataLoaded }: SearchBoxProps) {
     }
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const text = e.target?.result as string;
       try {
         console.log("CSV content sample:", text.substring(0, 200)); // Log sample of CSV
-        const messages = parseCSV(text);
+        const messages = await parseCSV(text);
         if (messages.length === 0) {
           throw new Error("No valid messages found in the CSV file");
         }
@@ -80,7 +84,7 @@ export function SearchBox({ value, onChange, onDataLoaded }: SearchBoxProps) {
   };
 
   // Parse CSV into Message objects
-  const parseCSV = (csvText: string): Message[] => {
+  const parseCSV = async (csvText: string): Promise<Message[]> => {
     // Split into lines and extract headers
     const lines = csvText.split('\n');
     if (lines.length <= 1) {
@@ -118,8 +122,29 @@ export function SearchBox({ value, onChange, onDataLoaded }: SearchBoxProps) {
     const messageIndex = headers.indexOf('message');
     const datetimeIndex = headers.indexOf('datetime');
 
+    // Check if LLM API key is available
+    const useLLM = hasLLMApiKey();
+    if (!useLLM) {
+      console.log("No LLM API key found, using rule-based classification");
+      toast({
+        title: "Using rule-based classification",
+        description: "Set up an OpenAI API key to enable LLM-based message classification",
+      });
+    } else {
+      console.log("Using LLM-based classification");
+      toast({
+        title: "Using LLM classification",
+        description: "Processing messages with AI for more accurate triage",
+      });
+    }
+
     // Parse each line into a Message object
     const messages: Message[] = [];
+    
+    // Track progress for large files
+    const totalLines = lines.length - 1;
+    let processedLines = 0;
+    let lastProgressUpdate = 0;
     
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim();
@@ -150,38 +175,20 @@ export function SearchBox({ value, onChange, onDataLoaded }: SearchBoxProps) {
           values.push('');
         }
         
-        // Simple triage algorithm based on keywords
-        // In a real app, this would be replaced with actual LLM classification
         const content = values[messageIndex]?.trim() || '';
         const subject = values[subjectIndex]?.trim() || 'No Subject';
         
-        let triageLevel: TriageLevel = "Low";
-        let triageCategory: TriageCategory = "Other";
-        
-        // Very basic keyword-based urgency detection
-        if (/urgent|emergency|immediate|severe|critical|chest pain|difficulty breath/i.test(content + subject)) {
-          triageLevel = "Urgent";
-        } else if (/important|soon|high|abnormal|worsening/i.test(content + subject)) {
-          triageLevel = "High";
-        } else if (/follow[ -]?up|medication|refill|results/i.test(content + subject)) {
-          triageLevel = "Medium";
-        }
-        
-        // Basic category detection
-        if (/pain|symptom|fever|sick|ill|infection|condition|health concern/i.test(content + subject)) {
-          triageCategory = "Clinical";
-        } else if (/medication|prescription|refill|drug|dose/i.test(content + subject)) {
-          triageCategory = "Medication";
-        } else if (/appointment|schedule|reschedule|cancel|availability/i.test(content + subject)) {
-          triageCategory = "Administrative";
-        } else if (/lab|test|result|blood|urine|sample|specimen/i.test(content + subject)) {
-          triageCategory = "Lab Result";
-        } else if (/follow[ -]?up|check[ -]?up|visit/i.test(content + subject)) {
-          triageCategory = "Follow-up";
-        } else if (/insurance|coverage|payment|bill|cost/i.test(content + subject)) {
-          triageCategory = "Insurance";
-        } else if (/referral|specialist|consult/i.test(content + subject)) {
-          triageCategory = "Referral";
+        // Classify message - either with LLM or fallback to rule-based
+        let classification;
+        if (useLLM && processedLines % 10 === 0) { // Process every 10th message with LLM to avoid rate limits
+          try {
+            classification = await classifyMessageWithLLM(subject, content);
+          } catch (error) {
+            console.warn("LLM classification failed, falling back to rules:", error);
+            classification = classifyMessageWithRules(subject, content);
+          }
+        } else {
+          classification = classifyMessageWithRules(subject, content);
         }
         
         const message: Message = {
@@ -189,11 +196,19 @@ export function SearchBox({ value, onChange, onDataLoaded }: SearchBoxProps) {
           subject: subject,
           content: content,
           datetime: values[datetimeIndex]?.trim() || new Date().toISOString(),
-          triage_category: triageCategory,
-          triage_level: triageLevel
+          triage_category: classification.triage_category,
+          triage_level: classification.triage_level
         };
         
         messages.push(message);
+        
+        // Update progress for large files
+        processedLines++;
+        const progress = Math.floor((processedLines / totalLines) * 100);
+        if (progress >= lastProgressUpdate + 10) {
+          lastProgressUpdate = progress;
+          console.log(`Processing: ${progress}% complete (${processedLines}/${totalLines})`);
+        }
       } catch (err) {
         console.warn(`Error parsing line ${i}:`, err);
         // Continue with next line instead of failing the whole import
@@ -234,6 +249,16 @@ export function SearchBox({ value, onChange, onDataLoaded }: SearchBoxProps) {
             {isLoading ? 'Loading...' : 'Upload CSV'}
           </Button>
         </div>
+        <Dialog open={showSettings} onOpenChange={setShowSettings}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="icon">
+              <Settings className="h-4 w-4" />
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <LLMSettings onClose={() => setShowSettings(false)} />
+          </DialogContent>
+        </Dialog>
       </div>
       
       {error && (
