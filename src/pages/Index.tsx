@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { getFilteredMessages } from "@/services/mockDataService";
 import { Message, TriageLevel, TriageCategory, FilterState, DateRange } from "@/types";
@@ -15,6 +14,8 @@ import { Inbox, BarChart2 } from "lucide-react";
 const Index = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [useUploadedData, setUseUploadedData] = useState(false);
+  const [uploadedMessages, setUploadedMessages] = useState<Message[]>([]);
   const [filters, setFilters] = useState<FilterState>({
     dateRange: { from: undefined, to: undefined },
     triageLevel: "All",
@@ -23,6 +24,29 @@ const Index = () => {
   });
 
   const fetchMessages = useCallback(async () => {
+    if (useUploadedData) {
+      // Filter uploaded messages
+      const filteredMessages = uploadedMessages.filter(message => {
+        const messageDate = new Date(message.datetime);
+        const matchesDateRange = 
+          (!filters.dateRange.from || messageDate >= filters.dateRange.from) && 
+          (!filters.dateRange.to || messageDate <= filters.dateRange.to);
+        
+        const matchesTriageLevel = filters.triageLevel === "All" || message.triage_level === filters.triageLevel;
+        const matchesTriageCategory = filters.triageCategory === "All" || message.triage_category === filters.triageCategory;
+        
+        const matchesSearch = filters.searchQuery === "" || 
+          message.subject.toLowerCase().includes(filters.searchQuery.toLowerCase()) || 
+          message.content.toLowerCase().includes(filters.searchQuery.toLowerCase());
+        
+        return matchesDateRange && matchesTriageLevel && matchesTriageCategory && matchesSearch;
+      });
+      
+      setMessages(filteredMessages);
+      return;
+    }
+
+    // Otherwise use mock data service
     setIsLoading(true);
     try {
       const data = await getFilteredMessages(
@@ -37,7 +61,7 @@ const Index = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [filters]);
+  }, [filters, useUploadedData, uploadedMessages]);
 
   useEffect(() => {
     fetchMessages();
@@ -57,6 +81,18 @@ const Index = () => {
 
   const handleSearchChange = (searchQuery: string) => {
     setFilters({ ...filters, searchQuery });
+  };
+
+  const handleCSVDataLoaded = (loadedMessages: Message[]) => {
+    setUploadedMessages(loadedMessages);
+    setUseUploadedData(true);
+    // Reset filters
+    setFilters({
+      dateRange: { from: undefined, to: undefined },
+      triageLevel: "All",
+      triageCategory: "All",
+      searchQuery: "",
+    });
   };
 
   return (
@@ -100,6 +136,7 @@ const Index = () => {
                   <SearchBox
                     value={filters.searchQuery}
                     onChange={handleSearchChange}
+                    onDataLoaded={handleCSVDataLoaded}
                   />
                 </div>
               </div>
@@ -107,7 +144,14 @@ const Index = () => {
             
             <div className="bg-white rounded-lg shadow-sm p-4">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold text-gray-800">Messages ({messages.length})</h2>
+                <h2 className="text-xl font-semibold text-gray-800">
+                  Messages ({messages.length})
+                  {useUploadedData && (
+                    <span className="ml-2 text-sm font-normal text-green-600">
+                      Using uploaded CSV data
+                    </span>
+                  )}
+                </h2>
               </div>
               <Separator className="mb-4" />
               <MessageList messages={messages} isLoading={isLoading} />
@@ -116,8 +160,15 @@ const Index = () => {
           
           <TabsContent value="analytics">
             <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-6">Message Analytics</h2>
-              <DashboardStats />
+              <h2 className="text-xl font-semibold text-gray-800 mb-6">
+                Message Analytics
+                {useUploadedData && (
+                  <span className="ml-2 text-sm font-normal text-green-600">
+                    Using uploaded CSV data
+                  </span>
+                )}
+              </h2>
+              <DashboardStats customMessages={useUploadedData ? uploadedMessages : undefined} />
             </div>
           </TabsContent>
         </Tabs>

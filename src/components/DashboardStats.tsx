@@ -1,26 +1,58 @@
 
 import { useEffect, useState } from "react";
 import { getMessageCountByTriageLevel, getMessageCountByCategory } from "@/services/mockDataService";
-import { TriageLevel, TriageCategory } from "@/types";
+import { TriageLevel, TriageCategory, Message } from "@/types";
 import { TileCounter } from "./TileCounter";
 import { PieChart } from "./PieChart";
 import { AlertCircle, Clock, Activity, CheckCircle } from "lucide-react";
 
-export function DashboardStats() {
+interface DashboardStatsProps {
+  customMessages?: Message[];
+}
+
+export function DashboardStats({ customMessages }: DashboardStatsProps) {
   const [triageCounts, setTriageCounts] = useState<Record<TriageLevel, number> | null>(null);
   const [categoryCounts, setCategoryCounts] = useState<Record<TriageCategory, number> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
+      setIsLoading(true);
       try {
-        const [triageData, categoryData] = await Promise.all([
-          getMessageCountByTriageLevel(),
-          getMessageCountByCategory()
-        ]);
-        
-        setTriageCounts(triageData);
-        setCategoryCounts(categoryData);
+        if (customMessages) {
+          // Calculate counts from custom messages
+          const tCounts: Record<TriageLevel, number> = {
+            Urgent: 0,
+            High: 0,
+            Medium: 0,
+            Low: 0
+          };
+          
+          const cCounts: Record<string, number> = {};
+          
+          customMessages.forEach(message => {
+            // Count by triage level
+            tCounts[message.triage_level]++;
+            
+            // Count by category
+            if (!cCounts[message.triage_category]) {
+              cCounts[message.triage_category] = 0;
+            }
+            cCounts[message.triage_category]++;
+          });
+          
+          setTriageCounts(tCounts);
+          setCategoryCounts(cCounts as Record<TriageCategory, number>);
+        } else {
+          // Use mock data service
+          const [triageData, categoryData] = await Promise.all([
+            getMessageCountByTriageLevel(),
+            getMessageCountByCategory()
+          ]);
+          
+          setTriageCounts(triageData);
+          setCategoryCounts(categoryData);
+        }
       } catch (error) {
         console.error("Error fetching stats:", error);
       } finally {
@@ -29,7 +61,7 @@ export function DashboardStats() {
     };
 
     fetchStats();
-  }, []);
+  }, [customMessages]);
 
   const triageChartData = triageCounts ? [
     { name: "Urgent", value: triageCounts.Urgent, color: "#DC2626" },
